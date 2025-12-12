@@ -1,0 +1,164 @@
+
+> frontend@0.1.0 build
+> next build
+
+   ▲ Next.js 16.0.10 (Turbopack)
+
+   Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 7 errors:
+./src/components/chat/AudioPlayer.tsx:1:28
+Ecmascript file had an error
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { useState[33m,[39m useRef[33m,[39m useEffect } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m   |[39m                            [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 2 |[39m [36mimport[39m { [33mPlay[39m[33m,[39m [33mPause[39m[33m,[39m [33mVolume2[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m
+ [90m 3 |[39m [36mimport[39m { [33mButton[39m } [36mfrom[39m [32m'@/components/ui/button'[39m[33m;[39m
+ [90m 4 |[39m [36mimport[39m { [33mSlider[39m } [36mfrom[39m [32m'@/components/ui/slider'[39m[33m;[39m[0m
+
+You're importing a component that needs `useEffect`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+
+ Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+
+
+
+Import trace:
+  Server Component:
+    ./src/components/chat/AudioPlayer.tsx
+    ./src/components/chat/MessageItem.tsx
+    ./src/components/chat/ChatInterface.tsx
+    ./src/app/page.tsx
+
+
+./src/components/chat/AudioPlayer.tsx:1:20
+Ecmascript file had an error
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { useState[33m,[39m useRef[33m,[39m useEffect } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m   |[39m                    [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 2 |[39m [36mimport[39m { [33mPlay[39m[33m,[39m [33mPause[39m[33m,[39m [33mVolume2[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m
+ [90m 3 |[39m [36mimport[39m { [33mButton[39m } [36mfrom[39m [32m'@/components/ui/button'[39m[33m;[39m
+ [90m 4 |[39m [36mimport[39m { [33mSlider[39m } [36mfrom[39m [32m'@/components/ui/slider'[39m[33m;[39m[0m
+
+You're importing a component that needs `useRef`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+
+ Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+
+
+
+Import trace:
+  Server Component:
+    ./src/components/chat/AudioPlayer.tsx
+    ./src/components/chat/MessageItem.tsx
+    ./src/components/chat/ChatInterface.tsx
+    ./src/app/page.tsx
+
+
+./src/components/chat/AudioPlayer.tsx:1:10
+Ecmascript file had an error
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { useState[33m,[39m useRef[33m,[39m useEffect } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m   |[39m          [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 2 |[39m [36mimport[39m { [33mPlay[39m[33m,[39m [33mPause[39m[33m,[39m [33mVolume2[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m
+ [90m 3 |[39m [36mimport[39m { [33mButton[39m } [36mfrom[39m [32m'@/components/ui/button'[39m[33m;[39m
+ [90m 4 |[39m [36mimport[39m { [33mSlider[39m } [36mfrom[39m [32m'@/components/ui/slider'[39m[33m;[39m[0m
+
+You're importing a component that needs `useState`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+
+ Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+
+
+
+Import trace:
+  Server Component:
+    ./src/components/chat/AudioPlayer.tsx
+    ./src/components/chat/MessageItem.tsx
+    ./src/components/chat/ChatInterface.tsx
+    ./src/app/page.tsx
+
+
+./src/components/chat/ChatInput.tsx:1:10
+Ecmascript file had an error
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { useState } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m   |[39m          [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 2 |[39m [36mimport[39m { [33mButton[39m } [36mfrom[39m [32m"@/components/ui/button"[39m[33m;[39m
+ [90m 3 |[39m [36mimport[39m { [33mInput[39m } [36mfrom[39m [32m"@/components/ui/input"[39m[33m;[39m
+ [90m 4 |[39m [36mimport[39m { [33mSend[39m[33m,[39m [33mSparkles[39m } [36mfrom[39m [32m"lucide-react"[39m[33m;[39m[0m
+
+You're importing a component that needs `useState`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+
+ Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+
+
+
+Import trace:
+  Server Component:
+    ./src/components/chat/ChatInput.tsx
+    ./src/components/chat/ChatInterface.tsx
+    ./src/app/page.tsx
+
+
+./src/components/chat/ChatInterface.tsx:1:28
+Ecmascript file had an error
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { useState[33m,[39m useRef[33m,[39m useEffect } [36mfrom[39m [32m"react"[39m[33m;[39m
+ [90m   |[39m                            [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 2 |[39m [36mimport[39m { [33mMessage[39m[33m,[39m generateMockResponse } [36mfrom[39m [32m"@/lib/mock-data"[39m[33m;[39m
+ [90m 3 |[39m [36mimport[39m { [33mChatInput[39m } [36mfrom[39m [32m"./ChatInput"[39m[33m;[39m
+ [90m 4 |[39m [36mimport[39m { [33mMessageItem[39m } [36mfrom[39m [32m"./MessageItem"[39m[33m;[39m[0m
+
+You're importing a component that needs `useEffect`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+
+ Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+
+
+
+Import trace:
+  Server Component:
+    ./src/components/chat/ChatInterface.tsx
+    ./src/app/page.tsx
+
+
+./src/components/chat/ChatInterface.tsx:1:20
+Ecmascript file had an error
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { useState[33m,[39m useRef[33m,[39m useEffect } [36mfrom[39m [32m"react"[39m[33m;[39m
+ [90m   |[39m                    [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 2 |[39m [36mimport[39m { [33mMessage[39m[33m,[39m generateMockResponse } [36mfrom[39m [32m"@/lib/mock-data"[39m[33m;[39m
+ [90m 3 |[39m [36mimport[39m { [33mChatInput[39m } [36mfrom[39m [32m"./ChatInput"[39m[33m;[39m
+ [90m 4 |[39m [36mimport[39m { [33mMessageItem[39m } [36mfrom[39m [32m"./MessageItem"[39m[33m;[39m[0m
+
+You're importing a component that needs `useRef`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+
+ Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+
+
+
+Import trace:
+  Server Component:
+    ./src/components/chat/ChatInterface.tsx
+    ./src/app/page.tsx
+
+
+./src/components/chat/ChatInterface.tsx:1:10
+Ecmascript file had an error
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { useState[33m,[39m useRef[33m,[39m useEffect } [36mfrom[39m [32m"react"[39m[33m;[39m
+ [90m   |[39m          [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 2 |[39m [36mimport[39m { [33mMessage[39m[33m,[39m generateMockResponse } [36mfrom[39m [32m"@/lib/mock-data"[39m[33m;[39m
+ [90m 3 |[39m [36mimport[39m { [33mChatInput[39m } [36mfrom[39m [32m"./ChatInput"[39m[33m;[39m
+ [90m 4 |[39m [36mimport[39m { [33mMessageItem[39m } [36mfrom[39m [32m"./MessageItem"[39m[33m;[39m[0m
+
+You're importing a component that needs `useState`. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the `"use client"` directive.
+
+ Learn more: https://nextjs.org/docs/app/api-reference/directives/use-client
+
+
+
+Import trace:
+  Server Component:
+    ./src/components/chat/ChatInterface.tsx
+    ./src/app/page.tsx
+
+
+    at <unknown> (./src/components/chat/AudioPlayer.tsx:1:28)
+    at <unknown> (./src/components/chat/AudioPlayer.tsx:1:20)
+    at <unknown> (./src/components/chat/AudioPlayer.tsx:1:10)
+    at <unknown> (./src/components/chat/ChatInput.tsx:1:10)
+    at <unknown> (./src/components/chat/ChatInterface.tsx:1:28)
+    at <unknown> (./src/components/chat/ChatInterface.tsx:1:20)
+    at <unknown> (./src/components/chat/ChatInterface.tsx:1:10)
