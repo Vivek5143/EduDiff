@@ -5,6 +5,7 @@ export interface Message {
     role: MessageRole;
     content: string;
     audioUrl?: string; // URL to Mock Audio
+    videoUrl?: string; // URL to generated video
     visualUrls?: string[]; // URLs to Mock GIFs
     timestamp: number;
 }
