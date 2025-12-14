@@ -56,6 +56,17 @@ export function MessageItem({ message }: MessageItemProps) {
                                 </div>
                             )}
 
+                            {/* Video Player */}
+                            {message.videoUrl && (
+                                <div className="mt-3 rounded-lg overflow-hidden border border-border shadow-sm">
+                                    <video
+                                        src={message.videoUrl}
+                                        controls
+                                        className="w-full aspect-video bg-black"
+                                    />
+                                </div>
+                            )}
+
                             {/* Visuals */}
                             {message.visualUrls && (
                                 <div className="mt-2">
