@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Message, generateMockResponse } from "@/lib/mock-data";
+import { Message } from "@/lib/mock-data";
+import { api } from "@/lib/api";
 import { ChatInput } from "./ChatInput";
 import { MessageItem } from "./MessageItem";
 import { Button } from "@/components/ui/button";
@@ -39,10 +40,27 @@ export function ChatInterface() {
         setIsTyping(true);
 
         try {
-            const response = await generateMockResponse(text);
-            setMessages(prev => [...prev, response]);
+            // Call Backend API
+            const response = await api.generateVideo(text);
+
+            const aiMsg: Message = {
+                id: Date.now().toString(),
+                role: "assistant",
+                content: response.explanation || "Here is a visual explanation.",
+                videoUrl: response.video_url,
+                timestamp: Date.now()
+            };
+
+            setMessages(prev => [...prev, aiMsg]);
         } catch (error) {
             console.error("Error generating response", error);
+            const errorMsg: Message = {
+                id: Date.now().toString(),
+                role: "assistant",
+                content: "Sorry, I encountered an error generating the explanation. Please try again.",
+                timestamp: Date.now()
+            };
+            setMessages(prev => [...prev, errorMsg]);
         } finally {
             setIsTyping(false);
         }
