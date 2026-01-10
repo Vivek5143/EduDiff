@@ -9,7 +9,7 @@ import uuid
 import shutil
 import json
 from manim import *
-from openai import OpenAI
+import google.generativeai as genai
 from dotenv import load_dotenv
 from datetime import datetime
 import time
@@ -67,16 +67,29 @@ os.makedirs(os.path.join(app.root_path, 'static', 'videos'), exist_ok=True)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- OpenAI / rendering defaults --------------------------------------------
-OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
+# --- GenAI / rendering defaults ---------------------------------------------
+GENAI_MODEL = os.getenv('GENAI_MODEL', 'gemini-2.5-flash')
 RENDER_QUALITY_DEFAULT = os.getenv('RENDER_QUALITY', 'low').lower()
-try:
-    openai_client = OpenAI()
-except Exception:
-    openai_client = None
 
-# Note: API key is read automatically from the OPENAI_API_KEY env var by the
-# new OpenAI client. No explicit assignment needed.
+# Initialize GenAI
+genai_model = None
+try:
+    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    if api_key:
+        genai.configure(api_key=api_key)
+        # Configure safety settings to block nothing
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+        ]
+        genai_model = genai.GenerativeModel(GENAI_MODEL, safety_settings=safety_settings)
+        logger.info(f"GenAI initialized with model: {GENAI_MODEL} and safety settings: BLOCK_NONE")
+    else:
+        logger.warning("No GOOGLE_API_KEY or GEMINI_API_KEY found. AI features will be disabled.")
+except Exception as e:
+    logger.error(f"Failed to initialize GenAI: {e}")
 
 # Set media and temporary directories with fallback to local paths
 if os.environ.get('DOCKER_ENV'):
@@ -134,6 +147,159 @@ def generate_latex_scene_code(expr: str) -> str:
 
 # --- AI helpers --------------------------------------------------------------
 
+def extract_text(response) -> str:
+    """
+    Extract text from LLM response, handling both string content and structured content blocks.
+    
+    Args:
+        response: LLM response object (Gemini API response)
+        
+    Returns:
+        str: Extracted text content, or empty string if none found
+    """
+    if not response:
+        logger.warning("extract_text: response is None or empty")
+        return ""
+    
+    # Log raw response for debugging (once) - use INFO level so it's visible
+    try:
+        logger.info(f"Raw LLM response type: {type(response)}")
+        logger.info(f"Raw LLM response has attributes: {[attr for attr in dir(response) if not attr.startswith('_')]}")
+        
+        # Try to log the actual structure
+        if hasattr(response, 'candidates'):
+            logger.info(f"Response has candidates: {response.candidates is not None}")
+            if response.candidates:
+                logger.info(f"Number of candidates: {len(response.candidates)}")
+                if len(response.candidates) > 0:
+                    candidate = response.candidates[0]
+                    logger.info(f"First candidate type: {type(candidate)}")
+                    logger.info(f"First candidate attributes: {[attr for attr in dir(candidate) if not attr.startswith('_')]}")
+                    if hasattr(candidate, 'content'):
+                        logger.info(f"Candidate content type: {type(candidate.content)}")
+                        if hasattr(candidate.content, 'parts'):
+                            logger.info(f"Content parts type: {type(candidate.content.parts)}, length: {len(candidate.content.parts) if candidate.content.parts else 0}")
+                            if candidate.content.parts:
+                                logger.info(f"First part type: {type(candidate.content.parts[0])}")
+                                logger.info(f"First part: {candidate.content.parts[0]}")
+    except Exception as e:
+        logger.error(f"Error logging raw response: {e}", exc_info=True)
+    
+    # Try direct text attribute first (Gemini API simple case)
+    # Also try calling it as a method if it's callable
+    if hasattr(response, 'text'):
+        try:
+            text_attr = response.text
+            # If text is a property/method, try calling it
+            if callable(text_attr):
+                text_attr = text_attr()
+            if text_attr and isinstance(text_attr, str) and text_attr.strip():
+                logger.info("Extracted text from response.text attribute")
+                return text_attr.strip()
+        except Exception as e:
+            logger.error(f"Error accessing response.text: {e}")
+            # Also log prompt feedback if available
+            if hasattr(response, 'prompt_feedback'):
+                logger.error(f"Prompt feedback: {response.prompt_feedback}")
+    
+    # Try response.text as a method call (new Gemini SDK)
+    try:
+        if hasattr(response, 'text') and callable(getattr(response, 'text', None)):
+            text_result = response.text()
+            if text_result and isinstance(text_result, str) and text_result.strip():
+                logger.info("Extracted text from response.text() method")
+                return text_result.strip()
+    except Exception as e:
+        logger.debug(f"Error calling response.text(): {e}")
+    
+    # Try Gemini API structured format: candidates[0].content.parts (most common for Gemini)
+    if hasattr(response, 'candidates'):
+        try:
+            candidates = response.candidates
+            if candidates and len(candidates) > 0:
+                candidate = candidates[0]
+                if hasattr(candidate, 'content'):
+                    content = candidate.content
+                    if content:
+                        # Try to get parts
+                        parts = None
+                        if hasattr(content, 'parts'):
+                            parts = content.parts
+                        elif hasattr(content, 'get') and callable(content.get):
+                            # If content is dict-like
+                            parts = content.get('parts')
+                        
+                        if parts:
+                            text_parts = []
+                            for part in parts:
+                                # Handle different part types
+                                part_text = None
+                                
+                                # Try as object with text attribute
+                                if hasattr(part, 'text'):
+                                    part_text = part.text
+                                # Try as dict
+                                elif isinstance(part, dict):
+                                    part_text = part.get('text') or part.get('output_text')
+                                # Try as string
+                                elif isinstance(part, str):
+                                    part_text = part
+                                
+                                if part_text:
+                                    text_parts.append(str(part_text))
+                            
+                            if text_parts:
+                                result = '\n'.join(text_parts).strip()
+                                logger.info(f"Extracted text from candidates[0].content.parts ({len(text_parts)} parts, {len(result)} chars)")
+                                return result
+        except (AttributeError, IndexError, KeyError, TypeError) as e:
+            logger.error(f"Error accessing candidates[0].content.parts: {e}", exc_info=True)
+    
+    # Try message.content if it exists (OpenAI-style format)
+    if hasattr(response, 'choices') and response.choices:
+        try:
+            message = response.choices[0].message
+            if hasattr(message, 'content'):
+                content = message.content
+                # If content is a non-empty string, return it
+                if isinstance(content, str) and content.strip():
+                    logger.info("Extracted text from choices[0].message.content (string)")
+                    return content.strip()
+                # If content is a list, extract text from blocks
+                if isinstance(content, list):
+                    text_parts = []
+                    for block in content:
+                        if isinstance(block, dict):
+                            # Check for OpenAI-style blocks
+                            if block.get('type') == 'text' and 'text' in block:
+                                text_parts.append(str(block['text']))
+                            # Check for output_text type
+                            elif block.get('type') == 'output_text' and 'text' in block:
+                                text_parts.append(str(block['text']))
+                        elif hasattr(block, 'text'):
+                            text_parts.append(str(block.text))
+                    if text_parts:
+                        result = '\n'.join(text_parts).strip()
+                        logger.info(f"Extracted text from choices[0].message.content (list, {len(text_parts)} blocks)")
+                        return result
+        except (AttributeError, IndexError, KeyError, TypeError) as e:
+            logger.debug(f"Error accessing choices[0].message.content: {e}")
+    
+    # Last resort: try to convert response to string or use __str__
+    try:
+        if hasattr(response, '__str__'):
+            str_repr = str(response)
+            if str_repr and str_repr.strip() and str_repr != str(type(response)):
+                logger.warning("Extracted text using __str__ fallback (may not be accurate)")
+                return str_repr.strip()
+    except Exception as e:
+        logger.debug(f"Error in __str__ fallback: {e}")
+    
+    # Log warning if no text found
+    logger.error("extract_text: No text found in response using any extraction method")
+    logger.error(f"Response type: {type(response)}, Response repr: {repr(response)[:500]}")
+    return ""
+
 def extract_code_from_response(text: str) -> str:
     if not text:
         return ""
@@ -144,27 +310,74 @@ def extract_code_from_response(text: str) -> str:
     return text.strip()
 
 
+def sanitize_manim_code(code: str) -> str:
+    """
+    Sanitize Gemini-generated Manim code:
+    - Remove markdown code fences
+    - Strip leading explanation text
+    - Start from 'from manim import' line
+    """
+    if not code:
+        return ""
+    
+    # Remove markdown code fences if present
+    code = re.sub(r'^```(?:python)?\s*\n', '', code, flags=re.MULTILINE)
+    code = re.sub(r'\n```\s*$', '', code, flags=re.MULTILINE)
+    
+    # Find the line containing "from manim import"
+    lines = code.split('\n')
+    start_idx = 0
+    for i, line in enumerate(lines):
+        if 'from manim import' in line.lower():
+            start_idx = i
+            break
+    
+    # Extract code starting from 'from manim import'
+    sanitized = '\n'.join(lines[start_idx:]).strip()
+    
+    return sanitized
+
+
 def generate_ai_manim_code(concept: str) -> str:
-    if openai_client is None:
+    if genai_model is None:
         return ""
     try:
-        sys_prompt = (
-            "You are a senior Manim expert. Generate only valid Python code for Manim. "
-            "Create a scene class named MainScene (or ThreeDScene when appropriate). "
-            "Use MathTex for any mathematical expressions. Do not include markdown."
+        # Backend guard: Detect equation-based questions
+        concept_lower = concept.lower()
+        equation_keywords = ["solve", "=", "equation", "find x", "find y"]
+        is_equation = any(keyword in concept_lower for keyword in equation_keywords)
+        
+        # Use the strict prompt (it already handles equation detection, but we log it)
+        full_prompt = generate_manim_prompt(concept)
+        
+        if is_equation:
+            logger.info(f"Detected equation-solving question: {concept}")
+        
+        resp = genai_model.generate_content(
+            contents=full_prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1,  # Lower temperature for more deterministic output
+            ),
         )
-        user_prompt = generate_manim_prompt(concept)
-        resp = openai_client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": sys_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.2,
-            max_tokens=1200,
-        )
-        content = resp.choices[0].message.content if resp and resp.choices else ""
+        
+        # Extract text using helper function (logging happens inside extract_text)
+        content = extract_text(resp)
+        
+        # Validate extracted content is not empty
+        if not content or not content.strip():
+            logger.error("LLM returned empty output")
+            raise ValueError("LLM returned empty output")
+        
         code = extract_code_from_response(content)
+        
+        # Sanitize the code: remove markdown, extract from 'from manim import'
+        code = sanitize_manim_code(code)
+        
+        # Validate sanitized code is not empty
+        if not code or not code.strip():
+            logger.error("Extracted code is empty after sanitization")
+            raise ValueError("LLM returned empty output")
+        
         return code
     except Exception as e:
         logger.error(f"AI generation failed: {e}")
@@ -172,99 +385,128 @@ def generate_ai_manim_code(concept: str) -> str:
 
 def generate_explanation(concept):
     """Generate a short text explanation of the concept."""
-    if openai_client is None:
+    if genai_model is None:
         return f"Here is a visual explanation of {concept}."
     try:
-        resp = openai_client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": "You are a helpful math tutor. Provide a concise, 2-sentence explanation of the requested concept. Do not use LaTeX formatting, just plain text."},
-                {"role": "user", "content": f"Explain: {concept}"},
-            ],
-            temperature=0.7,
-            max_tokens=150,
+        prompt = (
+            "You are a helpful math tutor. Provide a concise, 2-sentence explanation "
+            "of the requested concept. Do not use LaTeX formatting, just plain text.\n\n"
+            f"Concept: {concept}"
         )
-        return resp.choices[0].message.content if resp and resp.choices else f"Explanation of {concept}."
+        resp = genai_model.generate_content(
+            contents=prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.7,
+            ),
+        )
+        
+        # Extract text using helper function
+        text = extract_text(resp)
+        return text if text else f"Explanation of {concept}."
     except Exception as e:
         logger.error(f"Explanation generation failed: {e}")
         return f"Here is a visual explanation of {concept}."
 
 def generate_manim_prompt(concept):
-    """Generate a detailed prompt for GPT to create Manim code"""
-    return f"""Create a detailed Manim animation to demonstrate and explain: {concept}
+    """Generate a strict, deterministic prompt for Gemini to create Manim code"""
+    # Detect if this is an equation-solving problem
+    concept_lower = concept.lower()
+    is_equation = any(keyword in concept_lower for keyword in ["solve", "=", "equation", "find x", "find y"])
+    
+    equation_context = ""
+    if is_equation:
+        equation_context = """
+Question Type: LINEAR_EQUATION
 
-Create a Scene class named MainScene that follows these requirements:
+CRITICAL: This is an equation-solving problem. You MUST:
+- Show step-by-step algebraic transformations
+- Use MathTex for each equation step
+- Use TransformMatchingTex to animate between steps
+- NEVER use Axes, NumberPlane, plot(), or any graph/coordinate system
+- Display the final answer clearly
 
-1. Scene Setup:
-   - For 3D concepts: Use ThreeDScene with appropriate camera angles
-   - For 2D concepts: Use Scene with NumberPlane when relevant
-   - Add title and clear mathematical labels
+Example structure for "Solve for x: 3x - 5 = 10":
+1. Show: 3x - 5 = 10
+2. Transform to: 3x = 15
+3. Transform to: x = 5
+4. Highlight the answer
 
-2. Mathematical Elements:
-   - Use MathTex for equations with proper LaTeX syntax
-   - Include step-by-step derivations when showing formulas
-   - Add mathematical annotations and explanations
-   - Show key points and important relationships
+"""
+    
+    return f"""You are a deterministic Manim code generator. You are NOT a creative AI. You are a code compiler.
 
-3. Visual Elements:
-   - Create clear geometric shapes and diagrams
-   - Use color coding to highlight important parts
-   - Add arrows or lines to show relationships
-   - Include coordinate axes when relevant
+Your ONLY task: Generate EXECUTABLE Python Manim code that solves the math problem step-by-step.
 
-4. Animation Flow:
-   - Break down complex concepts into simple steps
-   - Use smooth transitions between steps
-   - Add pauses (self.wait()) at key moments
-   - Use transform animations to show changes
+==============================
+MANDATORY RULES (NO EXCEPTIONS)
+==============================
 
-5. Specific Requirements:
-   - For equations: Show step-by-step solutions
-   - For theorems: Visualize proof steps
-   - For geometry: Show construction process
-   - For 3D: Include multiple camera angles
-   - For graphs: Show coordinate system and gridlines
+1. OUTPUT ONLY PYTHON CODE. No markdown, no explanations, no comments outside code.
+2. DO NOT generate graphs or axes for equation solving.
+3. DO NOT use Axes, NumberPlane, or plot() for equations.
+4. DO NOT use generic template animations.
+5. You are not a creative AI. You are a deterministic code generator.
+6. Every step MUST be shown using MathTex and TransformMatchingTex.
+7. Add self.wait(1) after every transformation.
+8. End with self.wait(0.5) to finish.
 
-6. Code Structure:
-   - Import required Manim modules
-   - Use proper class inheritance
-   - Define clear animation sequences
-   - Include helpful comments
+==============================
+REQUIRED SCENE STRUCTURE
+==============================
 
-Example structure:
-```python
 from manim import *
 
-class MainScene(Scene):  # or ThreeDScene for 3D
+class MainScene(Scene):
     def construct(self):
-        # 1. Setup and introduction
-        title = Title("Concept Name")
+        # Step 1: Show original equation
+        eq1 = MathTex(r"<original_equation>")
+        self.play(Write(eq1))
+        self.wait(1)
         
-        # 2. Create mathematical objects
-        equation = MathTex(r"your_equation")
+        # Step 2: Transform to next step
+        eq2 = MathTex(r"<next_equation>")
+        self.play(TransformMatchingTex(eq1, eq2))
+        self.wait(1)
         
-        # 3. Create geometric objects
-        shapes = VGroup(...)
+        # Continue for all steps...
         
-        # 4. Add annotations
-        labels = VGroup(...)
-        
-        # 5. Animate step by step
-        self.play(Write(title))
-        self.play(Create(shapes))
-        
-        # 6. Show relationships
-        self.play(Transform(...))
-        
-        # 7. Conclude
-        self.wait()
-```
+        # Final answer highlight
+        answer_box = SurroundingRectangle(eq_final, color=GREEN)
+        self.play(Create(answer_box))
+        self.wait(1)
+        self.wait(0.5)
 
-Only output valid Manim Python code without any additional text or markdown."""
+==============================
+FORBIDDEN PATTERNS (HARD REJECT)
+==============================
+
+Your code will be REJECTED if it contains:
+- Axes
+- NumberPlane
+- plot(
+- GraphScene
+- begin_ambient_camera_rotation
+- while True
+- self.wait() without duration
+
+==============================
+{equation_context}==============================
+INPUT PROBLEM
+==============================
+
+Solve the following problem visually using Manim:
+
+{concept}
+"""
 
 def select_template(concept):
     """Select appropriate template based on the concept."""
     concept = concept.lower().strip()
+
+    # CRITICAL: Bypass templates if the user wants to SOLVE an equation
+    solve_indicators = ['solve', '=', 'calculate', 'simplify', 'find', 'step-by-step']
+    if any(ind in concept for ind in solve_indicators):
+        return None
     
     # Define template mappings with keywords
     template_mappings = {
@@ -328,16 +570,16 @@ def select_template(concept):
             max_matches = matches
             best_match = template_info['generator']
     
-    # Return best matching template or fallback to basic visualization
+    # Return best matching template
     if best_match and max_matches > 0:
         try:
             return best_match()
         except Exception as e:
             logger.error(f"Error generating template {best_match.__name__}: {str(e)}")
-            return generate_basic_visualization_code()
+            return None
     
-    # Default to basic visualization if no good match found
-    return generate_basic_visualization_code()
+    # Default to None to trigger AI generation
+    return None
 
 def generate_pythagorean_code():
     return '''from manim import *
@@ -1037,13 +1279,97 @@ class MainScene(ThreeDScene):
         self.wait()'''
 
 def generate_manim_code(concept):
-    """Generate Manim code based on the concept."""
+    """Generate Manim code based on the concept with validation."""
     try:
-        # First try to find a matching template
-        return select_template(concept.lower())
+        # FORCE AI GENERATION: Disable templates to ensure step-by-step videos
+        app.logger.info("Using AI generation for Manim code")
+        
+        # Detect if this is an equation-solving problem
+        concept_lower = concept.lower()
+        is_equation = any(keyword in concept_lower for keyword in ["solve", "=", "equation", "find x", "find y"])
+        
+        # Generate code (with retry if validation fails)
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                code = generate_ai_manim_code(concept)
+            except ValueError as ve:
+                # Re-raise ValueError (empty output) immediately without retry
+                if "empty output" in str(ve).lower():
+                    logger.error(f"LLM returned empty output, not retrying: {ve}")
+                    raise
+                # Other ValueErrors can be retried
+                if attempt < max_retries - 1:
+                    logger.warning(f"Code generation failed, retrying (attempt {attempt + 1}/{max_retries}): {ve}")
+                    continue
+                else:
+                    raise
+            
+            # Explicitly check if extracted code is empty or whitespace
+            if not code or not code.strip():
+                if attempt < max_retries - 1:
+                    logger.warning(f"Empty code generated, retrying (attempt {attempt + 1}/{max_retries})")
+                    continue
+                else:
+                    raise ValueError("LLM returned empty output")
+            
+            # Basic validation: Check for required components
+            code_lower = code.lower()
+            required_components = {
+                "from manim import": "from manim import" in code_lower,
+                "class": "class" in code_lower,
+                "scene": "scene" in code_lower,
+                "def construct": "def construct" in code_lower
+            }
+            
+            # Map back to display names for error message
+            display_names = {
+                "from manim import": "from manim import",
+                "class": "class",
+                "scene": "Scene",
+                "def construct": "def construct"
+            }
+            
+            missing_components = [display_names[comp] for comp, present in required_components.items() if not present]
+            
+            if missing_components:
+                app.logger.error(f"VALIDATION FAILED: Missing required components: {missing_components}")
+                app.logger.error(f"Rejected code (first 500 chars):\n{code[:500]}")
+                if attempt < max_retries - 1:
+                    app.logger.warning(f"Retrying generation (attempt {attempt + 1}/{max_retries})")
+                    continue
+                else:
+                    raise ValueError(
+                        f"Generated code is invalid: missing required components: {missing_components}. "
+                        f"Code must contain: from manim import, class, Scene, def construct"
+                    )
+            
+            # Hard-fail validation: Reject graph generation for equations
+            if is_equation:
+                forbidden_patterns = ["Axes", "NumberPlane", "plot(", "GraphScene"]
+                code_upper = code.upper()
+                
+                found_forbidden = [pattern for pattern in forbidden_patterns if pattern.upper() in code_upper]
+                
+                if found_forbidden:
+                    app.logger.error(f"VALIDATION FAILED: Found forbidden patterns in generated code: {found_forbidden}")
+                    app.logger.error(f"Rejected code (first 500 chars):\n{code[:500]}")
+                    if attempt < max_retries - 1:
+                        app.logger.warning(f"Retrying generation (attempt {attempt + 1}/{max_retries})")
+                        continue
+                    else:
+                        raise ValueError(
+                            f"Generated code contains forbidden graph patterns for equation solving: {found_forbidden}. "
+                            f"Code must use MathTex and TransformMatchingTex only."
+                        )
+            
+            # Code passed validation
+            app.logger.info("Manim code generated and validated successfully")
+            return code
+            
     except Exception as e:
         app.logger.error(f"Error generating Manim code: {str(e)}")
-        return generate_basic_visualization_code()
+        raise
 
 def generate_basic_visualization_code():
     """Generate code for basic visualization."""
@@ -1141,22 +1467,57 @@ def generate():
             if is_likely_latex(concept):
                 manim_code = generate_latex_scene_code(concept)
             else:
-                # Try to match with a template first
+                # Use centralized generation function (which forces AI usage)
                 try:
-                    manim_code = select_template(concept.lower())
-                except Exception as template_error:
-                    logger.error(f'Template selection error: {str(template_error)}')
-                    # Try AI generation if templates fail
-                    ai_code = generate_ai_manim_code(concept)
-                    if ai_code:
-                        manim_code = ai_code
-                        used_ai = True
-                    else:
-                        # Fallback to basic visualization if both fail
-                        manim_code = generate_basic_visualization_code()
+                    manim_code = generate_manim_code(concept)
+                    # Check if it was AI generated (generate_manim_code returns None or a string)
+                    # Note: generate_manim_code calls generate_ai_manim_code which is AI.
+                    used_ai = True
+                except ValueError as ve:
+                    # Validation error from generate_manim_code
+                    logger.error(f'Manim code validation failed: {ve}')
+                    return jsonify({
+                        'error': 'Failed to generate valid Manim code',
+                        'details': str(ve)
+                    }), 500
+                except Exception as gen_err:
+                    logger.error(f'Error generating Manim code: {gen_err}', exc_info=True)
+                    return jsonify({
+                        'error': 'Failed to generate Manim code',
+                        'details': str(gen_err)
+                    }), 500
             
             if not manim_code:
                 return jsonify({'error': 'Failed to generate code template'}), 500
+            
+            # Validate that the generated code contains a Scene class (preferably MainScene)
+            # Check for MainScene first, then fall back to any Scene class
+            if 'class MainScene' not in manim_code:
+                # Try to find any Scene class
+                if 'class' in manim_code and 'Scene' in manim_code:
+                    # Extract class name and update the code to use MainScene
+                    import re
+                    class_match = re.search(r'class\s+(\w+)\s*\(.*Scene', manim_code)
+                    if class_match:
+                        actual_class = class_match.group(1)
+                        logger.warning(f'Generated code uses class {actual_class}, replacing with MainScene')
+                        # Replace the class name with MainScene
+                        manim_code = re.sub(rf'class\s+{actual_class}\s*\(', 'class MainScene(', manim_code)
+                        # Also update the scene name in the command if needed
+                    else:
+                        logger.error('Generated code does not contain a valid Scene class')
+                        logger.debug(f'Generated code: {manim_code[:500]}...')
+                        return jsonify({
+                            'error': 'Generated code is invalid: Scene class not found',
+                            'details': 'The AI generated code does not match the expected structure.'
+                        }), 500
+                else:
+                    logger.error('Generated code does not contain a Scene class')
+                    logger.debug(f'Generated code: {manim_code[:500]}...')
+                    return jsonify({
+                        'error': 'Generated code is invalid: Scene class not found',
+                        'details': 'The AI generated code does not match the expected structure.'
+                    }), 500
             
             # Write code to temporary file
             code_file = os.path.join(temp_dir, 'scene.py')
@@ -1193,12 +1554,13 @@ def generate():
                 )
                 
                 if result.returncode != 0:
-                    error_msg = result.stderr if result.stderr else 'Unknown error during animation generation'
-                    logger.error(f'Manim error: {error_msg}')
-                    return jsonify({
-                        'error': 'Failed to generate animation',
-                        'details': error_msg
-                    }), 500
+                    # Capture both stderr and stdout for better error reporting
+                    error_msg = result.stderr if result.stderr else result.stdout if result.stdout else 'Unknown error during animation generation'
+                    logger.error(f'Manim execution failed (returncode={result.returncode})')
+                    logger.error(f'Manim stderr: {result.stderr}')
+                    logger.error(f'Manim stdout: {result.stdout}')
+                    # Raise RuntimeError as requested, but we'll catch it in the outer handler
+                    raise RuntimeError(f'Manim render failed: {error_msg}')
                 
                 # Look for the video file in multiple possible locations
                 possible_paths = [
@@ -1251,13 +1613,23 @@ def generate():
                     'error': 'Animation generation timed out',
                     'details': 'The animation took too long to generate. Please try a simpler concept.'
                 }), 500
+            except RuntimeError as re:
+                # Manim execution failed
+                logger.error(f'Manim execution RuntimeError: {re}')
+                return jsonify({
+                    'error': 'Failed to generate animation',
+                    'details': str(re)
+                }), 500
                 
         finally:
             # Cleanup temporary directory
             shutil.rmtree(temp_dir, ignore_errors=True)
             
     except Exception as e:
-        logger.error(f'Error generating animation: {str(e)}')
+        logger.error(f'Error generating animation: {str(e)}', exc_info=True)
+        import traceback
+        error_trace = traceback.format_exc()
+        logger.error(f'Full traceback: {error_trace}')
         return jsonify({
             'error': 'Internal server error',
             'details': str(e)
