@@ -1,9 +1,19 @@
-from openai import OpenAI
+import google.generativeai as genai
 from dotenv import load_dotenv
 import os
+
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def _get_genai_client() -> genai.Client:
+    key = os.getenv("GEMINI_API_KEY")
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
+    return genai.Client(api_key=key)
+
+
+client = _get_genai_client()
+
 
 SYSTEM_PROMPT = """
 You are an expert mathematics teacher.
@@ -24,13 +34,18 @@ Output format:
 """
 
 def generate_math_solution(question: str) -> str:
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": question}
-        ],
-        temperature=0.4
-    )
+    """Legacy helper using Gemini; kept for backward compatibility."""
+    if not isinstance(question, str) or not question.strip():
+        raise ValueError("question must be a non-empty string")
 
-    return response.choices[0].message.content
+    prompt = f"{SYSTEM_PROMPT}\n\nStudent question:\n{question.strip()}"
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=genai.types.GenerateContentConfig(
+            temperature=0.4,
+        ),
+    )
+    content = getattr(response, "text", None)
+    return content.strip() if content else ""

@@ -2,7 +2,7 @@ import os
 from typing import Optional
 
 from dotenv import load_dotenv
-from openai import OpenAI
+import google.generativeai as genai
 
 from ..prompts.tutor_prompt import SYSTEM_PROMPT
 
@@ -10,47 +10,47 @@ from ..prompts.tutor_prompt import SYSTEM_PROMPT
 load_dotenv()
 
 
-def _get_openai_client(api_key: Optional[str] = None) -> OpenAI:
+def _get_genai_model(api_key: Optional[str] = None) -> genai.GenerativeModel:
     """
-    Create and return a configured OpenAI client.
+    Configure and return a Gemini model client.
 
-    The API key is read from the OPENAI_API_KEY environment variable
-    unless an explicit key is provided.
+    Reads the API key from GOOGLE_API_KEY unless an explicit key is provided.
     """
-    key = api_key or os.getenv("OPENAI_API_KEY")
+    key = api_key or os.getenv("GOOGLE_API_KEY")
     if not key:
         raise RuntimeError(
-            "OPENAI_API_KEY environment variable is not set. "
+            "GOOGLE_API_KEY environment variable is not set. "
             "Please configure it before using the math tutor."
         )
-    return OpenAI(api_key=key)
 
-client = _get_openai_client()
+    genai.configure(api_key=key)
+
+    return genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        system_instruction=SYSTEM_PROMPT,
+        generation_config=genai.types.GenerationConfig(
+            temperature=0.35,
+            response_mime_type="text/plain",
+        ),
+    )
+
+
+model = _get_genai_model()
 
 
 def generate_math_solution(question: str) -> str:
     """
-    Generate a full, step-by-step mathematical solution and explanation
-    for the given question using the OpenAI Chat Completions API.
+    Generate a full, step-by-step mathematical explanation for the question.
 
-    The response mimics a ChatGPT-style math tutor:
-    - Restates the problem
-    - Shows step-by-step reasoning
-    - Ends with a clear final answer or conclusion
+    The model is instructed to:
+    - Restate the problem
+    - Explain each step clearly in plain text (no LaTeX, no special symbols)
+    - Provide a final answer/conclusion
     """
     if not isinstance(question, str) or not question.strip():
         raise ValueError("question must be a non-empty string")
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": question.strip()},
-        ],
-        temperature=0.35,
-    )
+    response = model.generate_content(question.strip())
 
-    content = response.choices[0].message.content
+    content = getattr(response, "text", None)
     return content.strip() if content else ""
-
-

@@ -26,10 +26,10 @@ def generate_video(question: str, output_dir: str = "static/videos"):
     # Ensure tmp exists
     os.makedirs("tmp", exist_ok=True)
     
-    # Escape strings for python code
-    steps_list = str(manim_data["steps"])
-    explanation_str = f'"{manim_data["explanation"]}"'
-    
+    # Escape strings for python code using repr to safely handle quotes and newlines
+    steps_list = repr(manim_data["steps"])
+    safe_explanation = repr(manim_data["explanation"])
+
     script_content = f"""
 from edudiff.manim_engine.equation_transform import EquationTransformScene
 
@@ -37,7 +37,7 @@ class GeneratedScene(EquationTransformScene):
     def __init__(self, **kwargs):
         super().__init__(
             steps={steps_list},
-            explanation={explanation_str},
+            explanation={safe_explanation},
             **kwargs
         )
 """
