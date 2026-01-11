@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+frontend/node_modules
+npm-debug.log
+yarn.lock
+pnpm-lock.yaml
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+venv
+
+# Manim / Media outputs
+*.mp4
+*.gif
+*.png
+*.svg
+media
+backend/media
+backend/static
+backend/tmp
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml

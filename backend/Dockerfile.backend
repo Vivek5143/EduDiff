@@ -1,0 +1,33 @@
+# Use standard Manim Community image to ensure all LaTeX/Cairo/FFmpeg deps are present
+FROM manimcommunity/manim:v0.19.0
+
+# Switch to root to install system dependencies
+USER root
+
+# Install system dependencies required for pyttsx3 (espeak) and other potential needs
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    espeak \
+    libespeak1 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy requirements first to leverage Docker cache
+# Context is ./backend, so no "backend/" prefix needed
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the backend code
+COPY . .
+
+# Create necessary directories for Manim output if they don't exist
+RUN mkdir -p media static tmp
+
+# Expose the Flask port
+EXPOSE 5001
+
+# Command to run the application
+CMD ["python", "app.py"]

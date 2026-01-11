@@ -1,0 +1,28 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+venv
+.venv
+
+# Manim outputs (VERY IMPORTANT)
+media
+static
+tmp
+*.mp4
+*.gif
+*.png
+*.svg
+
+# Logs
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Git (just in case)
+.git
+.gitignore
