@@ -5,9 +5,11 @@ FROM manimcommunity/manim:v0.19.0
 USER root
 
 # Install system dependencies required for pyttsx3 (espeak) and other potential needs
+# Explicitly install ffmpeg so pydub can reliably find it at runtime.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     espeak \
     libespeak1 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -24,10 +26,17 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 
 # Create necessary directories for Manim output if they don't exist
-RUN mkdir -p media static tmp
+RUN mkdir -p media static tmp && \
+    chmod -R 755 media static tmp
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV DOCKER_ENV=1
+ENV MEDIA_DIR=/app/media
+ENV TEMP_DIR=/app/tmp
 
 # Expose the Flask port
 EXPOSE 5001
 
-# Command to run the application
-CMD ["python", "app.py"]
+# Command to run the application with gunicorn for production
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--timeout", "300", "--workers", "2", "app:app"]

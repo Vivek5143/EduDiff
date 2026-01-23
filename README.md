@@ -1,210 +1,144 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EduDiff (AI-Powered Math Animation Generator)
 
-## Getting Started
+EduDiff is a full-stack app that generates **short math explanation videos** using **Manim** on the backend and a **Next.js** UI on the frontend.
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-
-----------------------xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx------------------------------
-
-# Manim Video Generator 🎬
-
-A web-based tool for generating mathematical animations using Manim, Flask, and OpenAI. Create beautiful mathematical visualizations with simple text prompts.
-
-[![manim video generator](https://img.youtube.com/vi/rIltjjzxsGQ/0.jpg)](https://www.youtube.com/watch?v=rIltjjzxsGQ)
-# [Detailed Step-by-Step Guide available here](https://sevalla.com/blog/guide-to-building-an-ai-powered-mathematical-animation-generator)
-
-## 🌟 Features
-
-- Generate mathematical animations from text descriptions
-- Modern, responsive web interface
-- Real-time code preview with syntax highlighting
-- Support for various mathematical concepts
-- Easy-to-use example prompts
-- Docker support for easy deployment
-
-## 🚀 Quick Start
-
-1. Clone the repository:
-```bash
-git clone https://github.com/rohitg00/manim-video-generator.git
-cd manim-video-generator
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Set up environment variables:
-```bash
-cp .env.example .env
-# Edit .env with your OpenAI API key
-```
-
-4. Run the application:
-```bash
-python app.py
-```
-
-5. Visit `http://localhost:5000` in your browser
-
-## 🐳 Docker Setup
-
-1. Build the Docker image:
-```bash
-docker build -t manim-generator .
-```
-
-2. Run the container:
-```bash
-docker run -p 5000:5000 -v $(pwd)/media:/app/media manim-generator
-```
-
-## 📝 Usage Notes
-
-- Ensure your mathematical concepts are clearly described
-- Complex animations may take longer to generate
-- Supported topics include:
-  - Basic geometry and algebra
-  - Calculus concepts
-  - 3D visualizations
-  - Matrix operations
-  - Complex numbers
-  - Differential equations
-
-## 🎥 Showcase
-
-Here are some examples of complex mathematical animations generated using our tool:
-
-### Complex Analysis Visualization
-<img src="static/gifs/complex_analysis.gif" width="800" alt="Complex Number Transformations">
-
-*This animation demonstrates complex number transformations, showing how functions map points in the complex plane. Watch as the visualization reveals the geometric interpretation of complex operations.*
-
-### 3D Calculus Concepts
-<img src="static/gifs/3d_calculus.gif" width="800" alt="3D Surface Integration">
-
-*A sophisticated 3D visualization showing multivariable calculus concepts. The animation illustrates surface integrals and vector fields in three-dimensional space, making abstract concepts tangible.*
-
-### Trigonometry
-<img src="static/gifs/differential_equations.gif" width="800" alt="Differential Equations">
-
-*This animation brings differential equations to life by visualizing solution curves and phase spaces. Watch how the system evolves over time, revealing the underlying mathematical patterns.*
-
-### Linear Algebra Transformations
-<img src="static/gifs/ComplexNumbersAnimation_ManimCE_v0.17.3.gif" width="800" alt="Linear Transformations">
-
-*Experience linear transformations in action! This visualization demonstrates how matrices transform space, showing concepts like eigenvectors, rotations, and scaling in an intuitive way.*
-
-These examples showcase the power of our tool in creating complex mathematical visualizations. Each animation is generated from a simple text description, demonstrating the capability to:
-- Render sophisticated 3D scenes with proper lighting and perspective
-- Create smooth transitions between mathematical concepts
-- Visualize abstract mathematical relationships
-- Handle multiple mathematical objects with precise timing
-- Generate publication-quality animations for educational purposes
-
-## 🔧 Requirements
-
-- Python 3.10+
-- FFmpeg
-- Cairo
-- LaTeX (for mathematical typesetting)
-- OpenAI API key
-
-## 🤝 Credits
-
-- Created by [Rohit Ghumare](https://github.com/rohitg00)
-- Powered by [Manim Community](https://www.manim.community/)
-- Special thanks to:
-  - [3Blue1Brown](https://www.3blue1brown.com/) for creating Manim
-  - [Sevalla](https://sevalla.com/) for support and inspiration
-  - The Manim Community for their excellent documentation and support
-
-## 📄 License
-
-This project is open source and available under the MIT License.
-
-## 🔗 Links
-
-- [Manim Documentation](https://docs.manim.community/)
-- [3Blue1Brown's Manim](https://3b1b.github.io/manim/)
-- [OpenAI API](https://openai.com/api/)
-- [Flask Documentation](https://flask.palletsprojects.com/)
-
-## 🤔 Common Issues & Solutions
-
-1. **LaTeX Errors**
-   - Ensure you have a complete LaTeX distribution installed
-   - Check for syntax errors in mathematical expressions
-
-2. **Rendering Issues**
-   - Verify FFmpeg installation
-   - Check Cairo dependencies
-   - Ensure sufficient system resources
-
-3. **API Rate Limits**
-   - Monitor OpenAI API usage
-   - Implement appropriate rate limiting
-   - Consider using API key rotation for high traffic
-
-## 🎯 Future Roadmap
-
-- [ ] User authentication system
-- [ ] Save and share animations
-- [ ] Custom animation templates
-- [ ] Batch processing
-- [ ] Advanced customization options
-- [ ] API endpoint for programmatic access
-
-## 💡 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📞 Support
-
-If you encounter any issues or have questions, please:
-1. Check the [Common Issues](#-common-issues--solutions) section
-2. Search existing GitHub issues
-3. Create a new issue if needed
+- **Frontend**: Next.js at `http://localhost:3000`
+- **Backend**: Flask + Manim at `http://localhost:5001`
+- **LLM**: Google Gemini via the supported **`google-genai`** SDK
 
 ---
 
-Made with ❤️ using Manim, Flask, and OpenAI
+## Features
+
+- **Generate Manim videos from text prompts** (concepts + equations)
+- **Docker Compose** setup (frontend + backend)
+- **Video serving** from the backend (`/static/videos/...`)
+
+---
+
+## Repo Layout
+
+```text
+EduDiff/
+  docker-compose.yaml
+  backend/
+    app.py
+    Dockerfile.backend
+    requirements.txt
+    static/
+    templates/
+  frontend/
+    Dockerfile.frontend
+    package.json
+    src/
+```
+
+---
+
+## Quick Start (Docker — Recommended)
+
+### 1) Create `backend/.env`
+
+Create `EduDiff/backend/.env`:
+
+```env
+# Use either GOOGLE_API_KEY or GEMINI_API_KEY
+GOOGLE_API_KEY=YOUR_KEY_HERE
+# GEMINI_API_KEY=YOUR_KEY_HERE
+
+GENAI_MODEL=gemini-2.5-flash
+RENDER_QUALITY=low
+
+PORT=5001
+FLASK_ENV=production
+```
+
+### 2) Build + run
+
+From the `EduDiff/` directory:
+
+```bash
+docker-compose up --build
+```
+
+### 3) Open the app
+
+- **UI**: `http://localhost:3000`
+- **Backend**: `http://localhost:5001`
+
+---
+
+## API
+
+### POST `/generate`
+
+Request JSON:
+
+```json
+{
+  "concept": "Solve 3x - 5 = 10",
+  "quality": "low"
+}
+```
+
+Response includes:
+- `video_url`: backend-served URL for the generated MP4
+- `code`: generated Manim code
+- `explanation`: short text explanation
+
+### GET `/demos`
+
+Returns demo GIF metadata used by the landing page.
+
+---
+
+## Run Without Docker (Local Dev)
+
+### Backend
+
+From `EduDiff/backend`:
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+### Frontend
+
+From `EduDiff/frontend`:
+
+```bash
+npm install
+npm run dev
+```
+
+The frontend reads `NEXT_PUBLIC_API_URL` to call the backend. In Docker this is set automatically to `http://backend:5001`.
+
+---
+
+## Troubleshooting
+
+### Docker build fails with dependency conflicts
+
+The backend uses `google-genai`, which requires a newer `requests`. Keep the pinned range in `backend/requirements.txt`.
+
+### “ffmpeg not found” warnings
+
+The backend Docker image installs `ffmpeg`. If you changed Dockerfiles, rebuild:
+
+```bash
+docker-compose build backend
+docker-compose up -d backend
+```
+
+### Backend starts but AI features don’t work
+
+Confirm `backend/.env` contains a valid `GOOGLE_API_KEY` (or `GEMINI_API_KEY`).
+
+---
+
+## License
+
+MIT (see `backend/LICENSE`).
+
+

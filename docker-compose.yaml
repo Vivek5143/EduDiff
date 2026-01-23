@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   backend:
     build:
@@ -13,19 +11,34 @@ services:
     environment:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
+      - DOCKER_ENV=1
+      - MEDIA_DIR=/app/media
+      - TEMP_DIR=/app/tmp
     volumes:
       - ./backend/static:/app/static
       - ./backend/media:/app/media
       - ./backend/tmp:/app/tmp
     restart: unless-stopped
+    networks:
+      - edudiff-network
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
+      args:
+        - NEXT_PUBLIC_API_URL=http://backend:5001
     container_name: edudiff-frontend
     ports:
       - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:5001
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - edudiff-network
+
+networks:
+  edudiff-network:
+    driver: bridge

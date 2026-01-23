@@ -8,8 +8,13 @@ import logging
 import uuid
 import shutil
 import json
+import warnings
+
+# Suppress pydub RuntimeWarning about ffmpeg (emitted during manim import)
+warnings.filterwarnings('ignore', category=RuntimeWarning, message='.*ffmpeg.*')
+
 from manim import *
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 from datetime import datetime
 import time
@@ -71,25 +76,17 @@ logger = logging.getLogger(__name__)
 GENAI_MODEL = os.getenv('GENAI_MODEL', 'gemini-2.5-flash')
 RENDER_QUALITY_DEFAULT = os.getenv('RENDER_QUALITY', 'low').lower()
 
-# Initialize GenAI
-genai_model = None
+# Initialize GenAI (new google-genai SDK)
+genai_client = None
 try:
     api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     if api_key:
-        genai.configure(api_key=api_key)
-        # Configure safety settings to block nothing
-        safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-        ]
-        genai_model = genai.GenerativeModel(GENAI_MODEL, safety_settings=safety_settings)
-        logger.info(f"GenAI initialized with model: {GENAI_MODEL} and safety settings: BLOCK_NONE")
+        genai_client = genai.Client(api_key=api_key)
+        logger.info(f"GenAI client initialized with model: {GENAI_MODEL}")
     else:
         logger.warning("No GOOGLE_API_KEY or GEMINI_API_KEY found. AI features will be disabled.")
 except Exception as e:
-    logger.error(f"Failed to initialize GenAI: {e}")
+    logger.error(f"Failed to initialize GenAI client: {e}")
 
 # Set media and temporary directories with fallback to local paths
 if os.environ.get('DOCKER_ENV'):
@@ -339,7 +336,7 @@ def sanitize_manim_code(code: str) -> str:
 
 
 def generate_ai_manim_code(concept: str) -> str:
-    if genai_model is None:
+    if genai_client is None:
         return ""
     try:
         # Backend guard: Detect equation-based questions
@@ -353,9 +350,10 @@ def generate_ai_manim_code(concept: str) -> str:
         if is_equation:
             logger.info(f"Detected equation-solving question: {concept}")
         
-        resp = genai_model.generate_content(
+        resp = genai_client.models.generate_content(
+            model=GENAI_MODEL,
             contents=full_prompt,
-            generation_config=genai.types.GenerationConfig(
+            config=genai.types.GenerateContentConfig(
                 temperature=0.1,  # Lower temperature for more deterministic output
             ),
         )
@@ -385,7 +383,7 @@ def generate_ai_manim_code(concept: str) -> str:
 
 def generate_explanation(concept):
     """Generate a short text explanation of the concept."""
-    if genai_model is None:
+    if genai_client is None:
         return f"Here is a visual explanation of {concept}."
     try:
         prompt = (
@@ -393,9 +391,10 @@ def generate_explanation(concept):
             "of the requested concept. Do not use LaTeX formatting, just plain text.\n\n"
             f"Concept: {concept}"
         )
-        resp = genai_model.generate_content(
+        resp = genai_client.models.generate_content(
+            model=GENAI_MODEL,
             contents=prompt,
-            generation_config=genai.types.GenerationConfig(
+            config=genai.types.GenerateContentConfig(
                 temperature=0.7,
             ),
         )
@@ -1689,4 +1688,5 @@ def get_demos():
     return jsonify({'videos': videos})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+    port = int(os.getenv('PORT', 5001))
+    app.run(host='0.0.0.0', port=port)
